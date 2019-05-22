@@ -2242,9 +2242,9 @@ if len(sys.argv) == 1:
 args = parser.parse_args()
 if args.greaterthan:
 	greatthanPorts=int(args.greaterthan)
-if not os.path.exists("/usr/share/metasploit-framework"):
- print "[!] Metasploit Framework cannot be found at the location /usr/share/metasploit-framework"
- sys.exit()
+#if not os.path.exists("/usr/share/metasploit-framework"):
+# print "[!] Metasploit Framework cannot be found at the location /usr/share/metasploit-framework"
+# sys.exit()
 if args.outputDirectory:
  if not os.path.exists(args.outputDirectory):
   os.mkdir(args.outputDirectory)
