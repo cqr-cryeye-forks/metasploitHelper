@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  metasploit:
+    build:
+      context: module_msfrpc/metasploit_service
+    ports:
+      - "55552:55552"
+    volumes:
+      - ./metasploit_data:/data
+    # Add any other configuration options you need for Metasploit service
+
+  python_script:
+    build:
+      context: module_msfrpc/python_script_service
+    depends_on:
+      - metasploit
+    # Add any other configuration options you need for Python script service
