@@ -1,27 +1,21 @@
 import importlib
 import string
-import threading
+
+import urllib3
 from bs4 import BeautifulSoup
 import sqlite3
 import datetime
 from shutil import copyfile
 
-try:
-    import msfrpc
-except:
-    print()
-    "Please install msfrpc from https://github.com/SpiderLabs/msfrpc/tree/master/python-msfrpc"
-    print()
-    "\n"
-    print()
-    "cd /tmp && git clone https://github.com/SpiderLabs/msfrpc"
-    print()
-    "cd msfrpc && cd python-msfrpc && python setup.py install"
-    print()
-    "pip install msgpack-python"
-    print()
-    "\n"
-    exit()
+from module_msfrpc import msfrpc
+# except:
+#     print("Please install msfrpc from https://github.com/SpiderLabs/msfrpc/tree/master/python-msfrpc")
+#     print("\n")
+#     print("cd /tmp && git clone https://github.com/SpiderLabs/msfrpc")
+#     print("cd msfrpc && cd python-msfrpc && python setup.py install")
+#     print( "pip install msgpack-python")
+#     print("\n")
+#     exit()
 import time
 import random
 
@@ -105,9 +99,9 @@ tmpOutputPathList = []
 
 tmpTargetURIList=[]
 
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-requests.packages.urllib3.disable_warnings()
-requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':RC4-SHA'
+urllib3.disable_warnings(InsecureRequestWarning)
+urllib3.disable_warnings()
+# urllib3.util.ssl_.DEFAULT_CIPHERS += ':RC4-SHA'
 
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 6.2; rv:30.0) Gecko/20150101 Firefox/32.0",
            "Connection": "keep-alive"}
@@ -145,10 +139,10 @@ class Logger(object):
 sys.stdout = Logger()
 
 
-def generatePassword():
-    chars = string.letters + string.digits
-    pwdSize = 20
-    return ''.join((random.choice(chars)) for x in range(pwdSize))
+def generate_password(length=20):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(random.choice(characters) for _ in range(length))
+    return password
 
 
 def get_ip_address():
@@ -522,7 +516,7 @@ def retrieveModuleDetails(input):
         print()
         "[*] Fetching module details: " + category + "/" + module
         if 'TARGETURI' in str(moduleOptions).upper():
-            for key, value in moduleOptions.items():
+            for key, value in list(moduleOptions.items()):
                 if key == 'TARGETURI':
                     try:
                         uriPath = value['default']
@@ -534,7 +528,7 @@ def retrieveModuleDetails(input):
             portNo = None
             targetSingle = True
             if 'RPORT' in str(moduleOptions):
-                for key, value in moduleOptions.items():
+                for key, value in list(moduleOptions.items()):
                     if key == 'RPORT':
                         try:
                             portNo = value['default']
@@ -542,7 +536,7 @@ def retrieveModuleDetails(input):
                             portNo = None
             else:
                 if 'RPORTS' in str(moduleOptions):
-                    for key, value in moduleOptions.items():
+                    for key, value in list(moduleOptions.items()):
                         if key == 'RPORTS':
                             try:
                                 portNo = value['default']
@@ -559,7 +553,7 @@ def retrieveModuleDetails(input):
             if portNo != None:
                 tmpOptionList = []
                 moduleOptions = client.call('module.options', [category, moduleName])
-                for key, value in moduleOptions.items():
+                for key, value in list(moduleOptions.items()):
                     if key != 'RHOST' and key != 'RHOSTS':
                         if value['required'] == True:
                             try:
@@ -624,8 +618,7 @@ def pullMSF():
     ip = msfIP
     port = msfPort
     if manualStart == True:
-        print()
-        "[*] Please run 'msfconsole' and then type 'msgrpc load Pass=xxx'"
+        print("[*] Please run 'msfconsole' and then type 'msgrpc load Pass=xxx'")
     testConnection = False
     while testConnection == False:
         try:
@@ -638,13 +631,11 @@ def pullMSF():
             client.login('msf', mypassword)
             testConnection = True
         except Exception as e:
-            print()
-            e
+            print(e)
             if 'Connection refused' in str(e):
                 time.sleep(1)
             if 'Authentication failed' in str(e):
-                print()
-                "[!] Incorrect password"
+                print("[!] Incorrect password")
                 sys.exit()
     tmpModuleList = []
 
@@ -656,9 +647,8 @@ def pullMSF():
 
     client = msfrpc.Msfrpc(opts)
     if client.login('msf', mypassword) == False:
-        print()
-        "[!] Unable to connect to msfrpcd"
-        sys.exit()
+        print("[!] Unable to connect to msfrpcd")
+        exit()
     aux_list = client.call('module.auxiliary', [])['modules']
     for x in aux_list:
         tmpModuleList.append(['auxiliary', x])
@@ -666,15 +656,13 @@ def pullMSF():
     exp_list = client.call('module.exploits', [])['modules']
     for x in exp_list:
         tmpModuleList.append(['exploit', x])
-    print()
-    "\n[*] Loaded " + str(len(tmpModuleList)) + " modules from Metasploit"
+    print("\n[*] Loaded " + str(len(tmpModuleList)) + " modules from Metasploit")
     del client
     return tmpModuleList
 
 
 def startMSF():
-    print()
-    "[*] Launching Metasploit msfrpcd"
+    print("[*] Launching Metasploit msfrpcd")
     count = 0
     cmd = msfPath + "/msfrpcd -p " + str(msfPort + count) + " -U msf -P " + mypassword + " -a " + msfIP + " -u /api/ -S"
     os.system(cmd)
@@ -685,14 +673,13 @@ def startMSF():
 
 
 def killMSF():
-    # cmd="pkill -x msfrpcd"
     cmd = "pkill -f msfrpcd"
     os.system(cmd)
 
-
-def updateMSF():
-    cmd = msfPath + "/msfupdate"
-    os.system(cmd)
+# NOT USED
+# def updateMSF():
+#     cmd = msfPath + "/msfupdate"
+#     os.system(cmd)
 
 
 def lookupPortDB(inputPortNo, portProtocol):
@@ -708,23 +695,24 @@ def lookupPortDB(inputPortNo, portProtocol):
     return tmpResultList
 
 
-def test_port(ip, port):
-    try:
-        s = socket.socket()
-        s.settimeout(2)
-        s.connect((str(ip), int(port)))
-        s.close
-        screenLock.acquire()
-        print(ip)
-        screenLock.release()
-        return True
-    except:
-        return False
-
-
-def start_thread(ip, port):
-    t = threading.Thread(target=test_port, args=(ip, port))
-    t.start()
+# NOT USED
+# def test_port(ip, port):
+#     try:
+#         s = socket.socket()
+#         s.settimeout(2)
+#         s.connect((str(ip), int(port)))
+#         s.close
+#         screenLock.acquire()
+#         print(ip)
+#         screenLock.release()
+#         return True
+#     except:
+#         return False
+#
+#
+# def start_thread(ip, port):
+#     t = threading.Thread(target=test_port, args=(ip, port))
+#     t.start()
 
 # NOT USED
 # def scanSubnet(ipRange):
@@ -817,13 +805,12 @@ def searchAndExtractPaths():
 
 
 def updateDB(tmpModuleList):
-    print()
-    "[*] Updating msfHelper.db"
+    print("[*] Updating msfHelper.db")
     # Update Database
     tmpPathList = []
     p = multiprocessing.Pool(numOfThreads)
     # tmpResultList=[]
-    tmpResultList = p.map(retrieveModuleDetails, zip(tmpModuleList))
+    tmpResultList = p.map(retrieveModuleDetails, list(zip(tmpModuleList)))
     p.close()
     p.terminate()
 
@@ -839,8 +826,7 @@ def updateDB(tmpModuleList):
         f = open('portList.csv', 'w')
     conn = sqlite3.connect(os.getcwd() + "/msfHelper.db")
     conn.text_factory = str
-    print()
-    "[*] Writing to msfHelper.db"
+    print("[*] Writing to msfHelper.db")
     for x in tmpResultList:
         if x != None:
             portNo = x[0]
@@ -859,8 +845,7 @@ def updateDB(tmpModuleList):
                         f1.write(uriPath + "\n")
                         tmpOutputPathList.append(uriPath)
             f.write(str(portNo) + "," + moduleType + "," + moduleName + "," + moduleParameters + "\n")
-            print()
-            moduleType + " " + moduleName
+            print(moduleType + " " + moduleName)
             try:
                 conn.execute(
                     "INSERT INTO portList (portNo,moduleType,moduleName,moduleParameters,moduleDescription) VALUES  (?,?,?,?,?)",
@@ -870,8 +855,7 @@ def updateDB(tmpModuleList):
                 continue
             if len(uriPath) > 0:
                 try:
-                    print()
-                    "[*] Adding: " + moduleName
+                    print("[*] Adding: " + moduleName)
                     conn.execute(
                         "INSERT INTO pathList (uriPath,moduleType,moduleName,moduleParameters,moduleDescription) VALUES  (?,?,?,?,?)",
                         (uriPath, moduleType, moduleName, moduleParameters, moduleDescription,));
@@ -890,11 +874,10 @@ def updateDB(tmpModuleList):
         tmpModuleDescription = ""
         if len(tmpPath) > 0:
             try:
-                print()
-                "[*] Adding: " + tmpModuleName
+                print("[*] Adding: " + tmpModuleName)
                 conn.execute(
                     "INSERT INTO pathList (uriPath,moduleType,moduleName,moduleParameters,moduleDescription) VALUES  (?,?,?,?,?)",
-                    (tmpPath, tmpModuleType, tmpModuleName, "", tmpModuleDescription,));
+                    (tmpPath, tmpModuleType, tmpModuleName, "", tmpModuleDescription,))
                 if len(x[1]) > 1:
                     if x[1] not in tmpOutputPathList:
                         f1.write(x[1] + "\n")
@@ -955,16 +938,13 @@ def runExploitDBModules():
 
         tmpPathResultList = []
         if len(vulnURLList) < 1:
-            print()
-            "No results found"
-            print()
-            "\n"
+            print("No results found")
+            print("\n")
         else:
             message = "\n[*] Found the below URLs on the web servers"
             print((setColor(message, bold, color="red")))
             for x in vulnURLList:
-                print()
-                x
+                print(x)
         for x in vulnURLList:
             for y in exploitDBList:
                 path = urlparse(x).path
@@ -973,15 +953,13 @@ def runExploitDBModules():
 
         if len(tmpPathResultList) > 1:
             tmpList1 = []
-            message = "\n[*] Found the below possible Exploit-DB entries"
-            print((setColor(message, bold, color="red")))
+            print("\n[*] Found the below possible Exploit-DB entries")
             for x in tmpPathResultList:
                 x[1] = x[1].replace("/pentest/", "")
                 if [x[1], "[" + x[2] + "]"] not in tmpList1:
                     tmpList1.append([x[1], "[" + x[2] + "]"])
             tmpList1.sort()
-            print()
-            tabulate(tmpList1)
+            print(tabulate(tmpList1))
             tmpList1 = []
         exploitDBList = []
     return ""
@@ -990,9 +968,7 @@ def runExploitDBModules():
 def runWebBasedModules():
     if execMethod == "all" or execMethod == "web":
         vulnURLList = []
-        message = "\n[Bruteforcing URI Paths]"
-        print()
-        message
+        print("\n[Bruteforcing URI Paths]")
         # print(setColor(message, bold, color="red"))
         if len(httpList) > 0:
             tmpHttpList = []
@@ -1021,10 +997,7 @@ def runWebBasedModules():
 
         tmpPathResultList = []
         if len(vulnURLList) < 1:
-            print()
-            "No results found"
-            print()
-            "\n"
+            print("No results found\n")
         for x in vulnURLList:
             for y in allPathModuleList:
                 path = urlparse(x).path
@@ -1033,8 +1006,7 @@ def runWebBasedModules():
 
         if len(tmpPathResultList) > 1:
             for x in tmpPathResultList:
-                print()
-                x
+                print(x)
 
         # Temp holder for running metasploit modules against the root of web servers
         defaultPathModuleList = []
@@ -1048,8 +1020,7 @@ def runWebBasedModules():
 
         if len(tmpPathResultList) > 0:
             # Run all modules against web servers which uripath matches against the list
-            print()
-            "\n**** Test Results from Metasploit Modules ****"
+            print("\n**** Test Results from Metasploit Modules ****")
             # message="\n[*] Launching compatible Metasploit modules"
             # print(setColor(message, bold, color="red"))
             tmpPathResultList1 = []
@@ -1099,18 +1070,13 @@ def runWebBasedModules():
                             startCount += 1
 
             if len(tmpPathResultList1) > 0 and quickMode == False:
-                message = "\n**** Finding MSF Modules which TARGETURI is set to / *****"
-                # message="\n[*] Running other Metasploit modules whose parameter  TARGETURI is set to /"
-                print((setColor(message, bold, color="red")))
-                print()
-                "**** Test Results from Metasploit Modules ****"
-                # print "Please wait ..."
+                print("\n**** Finding MSF Modules which TARGETURI is set to / *****")
+                print("**** Test Results from Metasploit Modules ****")
                 runMsfExploitsAndDisplayreport(tmpPathResultList1)
 
             tmpPathResultList3 = []
             if len(tmpPathResultList2) > 0 and quickMode == False:
-                message = "\n[*] The below Metasploit modules need to be run manually as they require additional parameters"
-                print((setColor(message, bold, color="red")))
+                print("\n[*] The below Metasploit modules need to be run manually as they require additional parameters")
                 tmpModuleList = []
                 for x in tmpPathResultList2:
                     host = x[0]
@@ -1125,8 +1091,8 @@ def runWebBasedModules():
                                         tmpPathResultList3.append([y[0], y[1]])
 
             if len(tmpPathResultList3) > 0:
-                print()
-                tabulate(tmpPathResultList3, headers=["Host", "Module"])
+                tabl = tabulate(tmpPathResultList3, headers=["Host", "Module"])
+                print(tabl)
                 tmpPathResultList3 = []
 
 
@@ -1160,14 +1126,11 @@ def runServiceBasedModules():
                 moduleList = z[1]
                 if title != "http" and title != "ssl/http" and len(title) > 2:
                     if count > 0:
-                        print()
-                        "\n"
-                    print()
-                    "Finding Modules Based on Keyword: " + title
+                        print("\n")
+                    print("Finding Modules Based on Keyword: " + title)
                     count += 1
                     if len(moduleList) < 1:
-                        print()
-                        "No results found"
+                        print("No results found")
                     if len(moduleList) > 0:
                         if intelligentMode == True:
                             # if len(moduleList)>0:
@@ -1187,7 +1150,6 @@ def runServiceBasedModules():
                                     if [a[0], a[1], a[2], a[4]] not in tmpModuleList1:
                                         tmpModuleList1.append([a[0], a[1], a[2], a[4]])
                             if len(tmpModuleList1) > 0:
-                                print()
                                 tabulate(tmpModuleList1, headers=["Type", "Metasploit Module", "Port No", "Parameters"])
                             else:
                                 print("No results found")
@@ -1852,7 +1814,7 @@ def runPortBasedModules():
                 else:
                     print("No results found")
             tmpList = []
-            print(tmpList, "\n")
+            print((tmpList, "\n"))
 
 
 def runAuxModule1(input):
@@ -2013,7 +1975,7 @@ def runMultipleAuxExploits(tmpList):
                             else:
                                 startCount += 1
 
-        tmpResultList = p.map(runAuxModule1, zip(tmpChunkList))
+        tmpResultList = p.map(runAuxModule1, list(zip(tmpChunkList)))
         tmpResultList1 = []
         p.close()
         p.join()
@@ -2113,7 +2075,7 @@ def runMultipleAuxExploits(tmpList):
 
 def runMsfExploitsAndDisplayreport(tmpPathResultList):
     p = multiprocessing.Pool(numOfThreads)
-    tmpResultList = p.map(runAuxModule1, zip(tmpPathResultList))
+    tmpResultList = p.map(runAuxModule1, list(zip(tmpPathResultList)))
     tmpResultList1 = []
     p.close()
     p.join()
@@ -2269,18 +2231,18 @@ def runMain():
         runServiceBasedModules()
 
         print("\n")
-        print("[*] " + str(len(httpList)) + " HTTP servers detected")
-        print("[*] " + str(len(httpsList)) + " HTTPs servers detected")
+        print(("[*] " + str(len(httpList)) + " HTTP servers detected"))
+        print(("[*] " + str(len(httpsList)) + " HTTPs servers detected"))
 
 
         if len(httpList) > 0:
             print("\n[*] List of HTTP Servers")
             for x in httpList:
-                print(x[0] + ":" + x[1])
+                print((x[0] + ":" + x[1]))
         if len(httpsList) > 0:
             print( "\n[*] List of HTTPs Servers")
             for x in httpsList:
-                print(x[0] + ":" + x[1])
+                print((x[0] + ":" + x[1]))
         runWebBasedModules()
         # runExploitDBModules()
         print("\n[List of Matching Metasploit Modules]")
@@ -2292,7 +2254,7 @@ def runMain():
         print("\n")
         killMSF()
         if len(nmapFilename) > 0:
-            print("Nmap file saved as: " + nmapFilename + ".nmap")
+            print(("Nmap file saved as: " + nmapFilename + ".nmap"))
         killMSF()
     except KeyboardInterrupt:
         killMSF()
@@ -2349,7 +2311,7 @@ def readExploitDB():
 
 def runNmap(targetIP):
     # print setColor('[*] Running Nmap against target: '+targetIP, bold, color="red")
-    print( "\n[*] Running nmap against target: " + targetIP)
+    print(( "\n[*] Running nmap against target: " + targetIP))
     portStr = ''
     count = 0
     # if len(allPortList):
@@ -2441,20 +2403,7 @@ def testMsfConnection():
 if __name__ == '__main__':
 
 
-    parser = argparse.ArgumentParser(
-        prog='PROG',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=(r'''\
-                    __ _   _      _
-     _ __ ___  ___ / _| | | | ___| |_ __   ___ _ __
-    | '_ ` _ \/ __| |_| |_| |/ _ \ | '_ \ / _ \ '__|
-    | | | | | \__ \  _|  _  |  __/ | |_) |  __/ |
-    |_| |_| |_|___/_| |_| |_|\___|_| .__/ \___|_|
-                                   |_|
-    
-    +-- https://github.com/milo2012/metasploitHelper
-    
-    '''))
+    parser = argparse.ArgumentParser(prog='PROG', formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument("target", nargs='*', type=str,
                         help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
@@ -2481,6 +2430,9 @@ if __name__ == '__main__':
                                        "Options for executing commands")
     cgroup.add_argument("-e", "--exec-method", choices={"all", "services", "ports", "web", "exploitdb"}, default="all",
                         help="")
+
+    "target 'target' -i --update --info --verbose"
+
     if len(sys.argv) == 1:
         parser.print_help()
         exit()
@@ -2525,7 +2477,7 @@ if __name__ == '__main__':
         if args.manual:
             print( "[!] Please enter a password if you are using the -m option")
         else:
-            mypassword = generatePassword()
+            mypassword = generate_password()
     killMSF()
     time.sleep(1)
     if manualStart == False:
