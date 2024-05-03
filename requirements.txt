@@ -4,3 +4,4 @@ beautifulsoup4==4.12.3
 python-libnmap==0.7.3
 requests==2.31.0
 urllib3==2.2.1
+msgpack-python==0.5.6
